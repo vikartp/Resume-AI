@@ -114,17 +114,33 @@ def generate_resume_pdf(resume_json: dict) -> bytes:
             ("Soft Skills", skills.get("soft", [])),
             ("Tools", skills.get("tools", [])),
         ]
+        pdf.set_font("Helvetica", "B", 10)
+        max_label_w = max((pdf.get_string_width(f"{label}: ") for label, items in skill_groups if items), default=0) + 2
+        
+        orig_l_margin = pdf.l_margin
+        
         for label, items in skill_groups:
             if not items:
                 continue
+            
+            pdf.set_x(orig_l_margin)
             pdf.set_font("Helvetica", "B", 10)
             pdf.set_text_color(50, 50, 50)
             label_text = f"{label}: "
-            label_w = pdf.get_string_width(label_text) + 2
-            pdf.cell(label_w, 5, label_text)
+            
+            pdf.cell(max_label_w, 5, label_text)
+            
             pdf.set_font("Helvetica", "", 10)
-            remaining = pdf.w - pdf.l_margin - pdf.r_margin - label_w
-            pdf.multi_cell(remaining, 5, ", ".join(items))
+            
+            # Temporarily change left margin so multi_cell wraps correctly aligned
+            pdf.set_left_margin(orig_l_margin + max_label_w)
+            
+            pdf.multi_cell(0, 5, ", ".join(items))
+            
+            # Restore left margin
+            pdf.set_left_margin(orig_l_margin)
+            
+        pdf.set_x(orig_l_margin)
         pdf.ln(3)
 
     # Experience

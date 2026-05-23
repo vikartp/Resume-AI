@@ -22,4 +22,6 @@ class ResumeSession(SQLModel, table=True):
     generated_resume_json: Optional[str] = None
     generated_resume_text: Optional[str] = None
     interview_guidance: Optional[str] = None
+    ats_score: Optional[int] = None
+    ats_breakdown: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

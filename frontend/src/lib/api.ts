@@ -47,6 +47,18 @@ export async function apiPost<T>(path: string, body?: FormData | object): Promis
   return res.json();
 }
 
+export async function apiDelete<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: "Request failed" }));
+    throw new Error(error.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 export function getLoginUrl(): string {
   return `${API_URL}/api/auth/login`;
 }
@@ -66,4 +78,8 @@ export function clearToken() {
 
 export function isAuthenticated(): boolean {
   return !!getToken();
+}
+
+export function getApiUrl(): string {
+  return API_URL;
 }

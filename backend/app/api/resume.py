@@ -1,4 +1,5 @@
 import json
+import logging
 import tempfile
 import os
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form
@@ -7,9 +8,11 @@ from sqlmodel import select
 from app.db.database import async_session
 from app.models.models import ResumeSession
 from app.services.resume_parser import extract_resume_text
-from app.services.ai_engine import generate_resume, generate_resume_text, generate_interview_guidance
+from app.services.ai_engine import generate_resume, generate_resume_text, generate_interview_guidance, calculate_ats_score
 from app.services.pdf_generator import generate_resume_pdf
 from app.api.auth import verify_token
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/resume", tags=["resume"])
 
@@ -52,6 +55,8 @@ async def generate_tailored_resume(
     finally:
         os.unlink(tmp_path)
 
+    logger.info(f"Generating resume for user {user_id[:8]}...")
+
     # Generate tailored resume using AI
     resume_json = await generate_resume(
         job_description=job_description,
@@ -63,6 +68,16 @@ async def generate_tailored_resume(
     # Generate plain text version
     resume_text_formatted = await generate_resume_text(resume_json)
 
+    # Calculate ATS score (non-blocking — failures don't break the flow)
+    ats_result = await calculate_ats_score(
+        job_description=job_description,
+        resume_json=resume_json,
+    )
+    ats_score = ats_result.get("overall_score")
+    ats_breakdown = json.dumps(ats_result)
+
+    logger.info(f"Resume generated for user {user_id[:8]}, ATS score: {ats_score}")
+
     # Save session
     async with async_session() as session:
         resume_session = ResumeSession(
@@ -73,6 +88,8 @@ async def generate_tailored_resume(
             experience_description=experience_description,
             generated_resume_json=json.dumps(resume_json),
             generated_resume_text=resume_text_formatted,
+            ats_score=ats_score,
+            ats_breakdown=ats_breakdown,
         )
         session.add(resume_session)
         await session.commit()
@@ -82,6 +99,7 @@ async def generate_tailored_resume(
         "session_id": resume_session.id,
         "resume_json": resume_json,
         "resume_text": resume_text_formatted,
+        "ats_score": ats_score,
     }
 
 
@@ -170,6 +188,29 @@ async def get_resume_history(request: Request):
     ]
 
 
+@router.delete("/{session_id}")
+async def delete_resume_session(session_id: str, request: Request):
+    """Delete a specific resume session."""
+    user_id = get_user_id_from_request(request)
+
+    async with async_session() as session:
+        stmt = select(ResumeSession).where(
+            ResumeSession.id == session_id,
+            ResumeSession.user_id == user_id,
+        )
+        result = await session.execute(stmt)
+        resume_session = result.scalar_one_or_none()
+
+        if not resume_session:
+            raise HTTPException(status_code=404, detail="Resume session not found")
+
+        await session.delete(resume_session)
+        await session.commit()
+
+    logger.info(f"Deleted session {session_id[:8]} for user {user_id[:8]}")
+    return {"status": "deleted", "session_id": session_id}
+
+
 @router.get("/{session_id}")
 async def get_resume_session(session_id: str, request: Request):
     """Get a specific resume session."""
@@ -186,11 +227,20 @@ async def get_resume_session(session_id: str, request: Request):
     if not resume_session:
         raise HTTPException(status_code=404, detail="Resume session not found")
 
+    ats_breakdown = None
+    if resume_session.ats_breakdown:
+        try:
+            ats_breakdown = json.loads(resume_session.ats_breakdown)
+        except json.JSONDecodeError:
+            ats_breakdown = None
+
     return {
         "id": resume_session.id,
         "job_description": resume_session.job_description,
         "resume_json": json.loads(resume_session.generated_resume_json) if resume_session.generated_resume_json else None,
         "resume_text": resume_session.generated_resume_text,
         "interview_guidance": resume_session.interview_guidance,
+        "ats_score": resume_session.ats_score,
+        "ats_breakdown": ats_breakdown,
         "created_at": resume_session.created_at.isoformat(),
     }

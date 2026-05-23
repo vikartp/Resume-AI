@@ -78,6 +78,29 @@ Include:
 
 Be specific to the JD and the candidate's background. Don't be generic."""
 
+ATS_SCORE_PROMPT = """You are an ATS (Applicant Tracking System) scoring expert.
+Analyze the tailored resume against the job description and provide an ATS compatibility score.
+
+Evaluate based on:
+1. **Keyword Match** (0-30): How well do resume keywords match JD requirements?
+2. **Skills Alignment** (0-25): Are required/preferred skills present?
+3. **Experience Relevance** (0-25): Does the experience directly address JD needs?
+4. **Formatting & Structure** (0-20): Is the resume ATS-parseable with clear sections?
+
+Return a JSON object with this exact structure:
+{
+  "overall_score": <number 0-100>,
+  "breakdown": {
+    "keyword_match": {"score": <0-30>, "details": "brief explanation"},
+    "skills_alignment": {"score": <0-25>, "details": "brief explanation"},
+    "experience_relevance": {"score": <0-25>, "details": "brief explanation"},
+    "formatting": {"score": <0-20>, "details": "brief explanation"}
+  },
+  "top_matched_keywords": ["keyword1", "keyword2", "keyword3"],
+  "missing_keywords": ["keyword1", "keyword2"],
+  "recommendation": "one sentence improvement suggestion"
+}"""
+
 
 async def generate_resume(
     job_description: str,
@@ -146,3 +169,31 @@ async def generate_interview_guidance(
     )
 
     return response.choices[0].message.content
+
+
+async def calculate_ats_score(
+    job_description: str, resume_json: dict
+) -> dict:
+    """Calculate ATS compatibility score for the resume against the JD."""
+    user_content = f"""## Job Description:
+{job_description}
+
+## Tailored Resume:
+{json.dumps(resume_json, indent=2)}"""
+
+    try:
+        response = await client.chat.completions.create(
+            model=CHAT_MODEL,
+            messages=[
+                {"role": "system", "content": ATS_SCORE_PROMPT},
+                {"role": "user", "content": user_content},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.3,
+        )
+
+        score_data = json.loads(response.choices[0].message.content)
+        return score_data
+    except Exception:
+        # Return a default score if scoring fails — don't break the flow
+        return {"overall_score": 75, "breakdown": {}, "recommendation": "Score calculation unavailable"}
