@@ -91,7 +91,7 @@ export default function HomePage() {
   const stat3 = useCounter(4800);
 
   return (
-    <div className="min-h-screen bg-[var(--background)] flex flex-col relative overflow-x-hidden">
+    <div className="min-h-screen bg-[var(--background)] flex flex-col relative overflow-x-clip">
       {/* Animated background orbs */}
       <div className="orb orb-1"></div>
       <div className="orb orb-2"></div>
@@ -155,7 +155,7 @@ export default function HomePage() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { icon: FileText, title: "Paste JD", desc: "Drop in any job description and let AI analyze the requirements" },
-            { icon: Sparkles, title: "AI Tailors", desc: "Your resume is rewritten by GPT-4o to match the role perfectly" },
+            { icon: Sparkles, title: "AI Tailors", desc: "Your resume is rewritten by advanced AI to match the role perfectly" },
             { icon: Download, title: "PDF Ready", desc: "Download an ATS-friendly PDF formatted for applicant tracking" },
             { icon: MessageSquare, title: "Interview Prep", desc: "Get AI-generated interview coaching specific to the role" },
           ].map(({ icon: Icon, title, desc }, i) => (
@@ -292,7 +292,7 @@ export default function HomePage() {
           <FAQItem q="How does the ATS optimization work?" a="Our AI analyzes the job description for key requirements, skills, and keywords. It then rewrites your resume to naturally incorporate these elements while maintaining authenticity, resulting in higher ATS pass rates." />
           <FAQItem q="Is my data secure?" a="Absolutely. Your resume data is processed securely and is only accessible to you. We use Google OAuth for authentication and never store your Google password." />
           <FAQItem q="Can I use this for multiple job applications?" a="Yes! Generate as many tailored resumes as you need. Each generation is saved to your history, so you can revisit and download any version anytime." />
-          <FAQItem q="What AI model powers the resume generation?" a="ResumeAI uses OpenAI's GPT-4o model, which provides state-of-the-art language understanding for analyzing job descriptions and crafting professional resumes." />
+          <FAQItem q="What technology powers the resume generation?" a="ResumeAI uses state-of-the-art large language models, which provide advanced natural language understanding for analyzing job descriptions and crafting professional resumes." />
         </div>
       </section>
 
@@ -327,7 +327,7 @@ export default function HomePage() {
           <div className="flex items-center gap-4 text-xs">
             <span className="flex items-center gap-1.5"><Shield size={12} /> Your data stays private</span>
             <span>·</span>
-            <span className="flex items-center gap-1.5"><CheckCircle size={12} /> Powered by GPT-4o</span>
+            <span className="flex items-center gap-1.5"><CheckCircle size={12} /> Powered by advanced AI</span>
           </div>
           <p className="text-xs">© {new Date().getFullYear()} ResumeAI. All rights reserved.</p>
         </div>
